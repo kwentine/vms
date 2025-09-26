@@ -1,4 +1,8 @@
 .qcow2
 .raw
 .iso
-ssh/id_ed25519
+.qcow2
+iso
+templates
+.env
+values.auto.pkrvars.hcl
