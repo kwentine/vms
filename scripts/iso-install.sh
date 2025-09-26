@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eu
 
+# Install from an ISO to a raw disk file
 main() {
   local iso disk size
   local nographics=0
@@ -28,7 +29,6 @@ main() {
   )
 
   if ((nographics)); then
-    # TODO Also redirect console to tty
     qemu_args+=(-nographic)
   fi
 
