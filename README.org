@@ -1,1 +1,1 @@
-#+TITLE: Equipment for work involving QEMU virtual machines
+#+TITLE: Equipment to work with QEMU VMs
