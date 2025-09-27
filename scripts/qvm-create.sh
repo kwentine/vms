@@ -31,7 +31,6 @@ while getopts b:s:nh opt; do
     b)
       base="${OPTARG}" ;;
     *)
-      echo "ERROR: Invalid option: ${opt}"
       exit 1 ;;
   esac
 done

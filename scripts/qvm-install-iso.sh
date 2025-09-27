@@ -21,14 +21,12 @@ main() {
     case "${opt}" in
       h)
         echo "${help_msg}"
-        exit 0;;
+        exit 0 ;;
       s)
         size="${OPTARG}" ;;
       n)
-        dry_run=1;;
+        dry_run=1 ;;
       *)
-        echo "Invalid option: ${opt}"
-        echo "${help_msg}"
         exit 1 ;;
     esac
   done

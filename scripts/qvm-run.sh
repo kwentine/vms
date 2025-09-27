@@ -37,7 +37,8 @@ while getopts ehnp:i:d opt; do
       ssh_port="${OPTARG}" ;;
     d)
       detach=1 ;;
-    *) exit 1 ;;
+    *)
+      exit 1 ;;
   esac
 done
 shift $((OPTIND - 1))
