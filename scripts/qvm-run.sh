@@ -82,8 +82,9 @@ fi
 
 if ((detach)); then
   args+=(
+    # Not sure yet about the best headless setup
+    -nographic
     -display none
-    -serial pty
   )
 fi
 
