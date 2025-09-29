@@ -3,7 +3,7 @@ set -eu
 
 help_msg="
 Run a VM from a disk in QVM_DIR/machines.
-Foward host SSH_PORT (defaut: 2222) to port 22 on the guest.
+Foward host SSH_PORT (defaut: 2200) to port 22 on the guest.
 Optionally enable cloud-init served over HTTP,
 assuming a server is listening on host CI_PORT (default: 8000).
 
@@ -19,7 +19,7 @@ dry_run=0
 detach=0
 cloud_init=0
 uefi=0
-ssh_port=2222
+ssh_port=2200
 
 while getopts ehnp:i:d opt; do
   case "${opt}" in
@@ -80,11 +80,45 @@ if ((uefi)); then
   args+=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd")
 fi
 
+# Headless mode (-d option), as opposed to graphical QEMU display
+# I experiment with the different variants below.
+
+# Monitor and VM serial port available on distinct plain TCP ports
+tcp_distinct=(
+  -display none
+  -monitor "tcp::2300,server=on"
+  -serial "tcp::2301,server=on"
+)
+
+# Monitor and VM serial port available on distinct telnet ports
+telnet_distinct=(
+  -display none
+  -monitor "telnet::2300,server=on"
+  -serial "telnet::2301,server=on"
+)
+
+# Monitor and VM serial port multiplexed on a telnet port
+# Do not wait for a connection to start the VM
+# This one is nice!
+telnet_multiplex=(
+  -display none
+  -serial "mon:telnet::2300,server=on,wait=off"
+)
+
+# Starts completely in the background,
+# with Qemu console and serial port multiplexed on a TCP port.
+# Really neat! This is it until I involve systemd.
+daemon=(
+  -daemonize
+  -pidfile "${drive%.qcow2}".pid
+  "${telnet_multiplex[@]}"
+)
+
+declare -n variant
+variant=daemon
 if ((detach)); then
   args+=(
-    # Not sure yet about the best headless setup
-    -nographic
-    -display none
+    "${variant[@]}"
   )
 fi
 
