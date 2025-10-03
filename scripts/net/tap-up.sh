@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -eu
+echo "$(basename $0) called with arguments: $@"
 
 # Bring up tap interface
 addr=10.42.0.1/24
 ifname="${1:-tap0}"
-if ip tuntap list | grep "${ifname}" > /dev/null; then
+if ip link show "${ifname}" &>/dev/null; then
   echo "Interface ${ifname} already exists"
   exit
 fi

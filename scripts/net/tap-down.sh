@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -eu
+echo "$(basename $0) called with arguments: $@"
 
 # Usage: ./tap-down.sh [ifname]
 ifname="${1:-tap0}"
