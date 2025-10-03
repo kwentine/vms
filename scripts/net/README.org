@@ -20,10 +20,12 @@ Step-by-step approach:
      - [ ] =cp= webserver reachable from =wk-1= and host
   3. Three VMS on bridge, that can reach the outside internet.
 
+Since I run unprivileged =qemu= in a toolbox, I chose to manage the host virtual interfaces independently of qemu invocations.
+
 * VM reachable from a host tap interface
-Since I run unprivileged =qemu= in a toolbox, I prefer managing the host virtual interface lifecycle separately.
 
 ** Host interface
+See:
 - =tap-up.sh=
 - =tap-down.sh=
 
@@ -69,3 +71,15 @@ firewall-cmd --zone=internal --add-interface=tap0
 #+end_example
 
 See =host-setup.sh=
+
+** Sources
+I found the following online documentation sources useful:
+
+- Arch wiki
+  - [[https://wiki.archlinux.org/title/QEMU/Advanced_networking][Advanced QEMU networking]]
+  - [[https://wiki.archlinux.org/title/Firewalld#][Firewalld]]
+- QEMU
+  - [[https://www.qemu.org/docs/master/system/invocation.html#hxtool-5][Network options]]
+  - [[https://wiki.qemu.org/Documentation/Networking][Set up networking]]
+- [[https://firewalld.org/][Firewalld]]
+- [[https://networkmanager.dev/docs/][NetworkManager]]
