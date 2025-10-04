@@ -7,7 +7,7 @@ Foward host SSH_PORT (defaut: 2200) to port 22 on the guest.
 Optionally enable cloud-init served over HTTP,
 assuming a server is listening on host CI_PORT (default: 8000).
 
-Usage: $(basename "$0") [-n] [-e] [-i CI_PORT] [-p SSH_PORT] DISK_NAME
+Usage: $(basename "$0") [-n] [-e] [-i CI_PORT] [-p SSH_PORT] [-d] DISK_NAME[.qcow2]
 "
 
 declare -r MACHINES_DIR="${QVM_DIR:-$(pwd)}/machines"
@@ -15,13 +15,14 @@ declare -r MACHINES_DIR="${QVM_DIR:-$(pwd)}/machines"
 declare dry_run cloud_init \
         uefi ssh_port \
         cloud_init_port detach
+
 dry_run=0
 detach=0
 cloud_init=0
-uefi=0
+uefi=1
 ssh_port=2200
 
-while getopts ehnp:i:d opt; do
+while getopts ehnup:i:d opt; do
   case "${opt}" in
     n)
       dry_run=1 ;;
@@ -50,6 +51,7 @@ if [[ -z "${drive}" ]]; then
   exit 1
 fi
 
+drive="${drive%.qcow2}.qcow2"
 if ! [[ -f "${MACHINES_DIR}/${drive}" ]]; then
   echo "ERROR: ${drive} not found in ${MACHINES_DIR}"
   exit
@@ -59,6 +61,12 @@ declare -a cmd args
 if ((dry_run)); then
   cmd=(echo)
 fi
+
+rootless=1
+if ! ((rootless)); then
+  cmd+=(sudo)
+fi
+
 cmd+=(qemu-system-x86_64)
 
 declare -a args=(
@@ -67,8 +75,9 @@ declare -a args=(
   -smp 4
   -m 8G
   -drive "file=${MACHINES_DIR}/${drive},if=virtio"
-  -nic "user,hostfwd=tcp::${ssh_port}-:22"
 )
+
+# Boot options
 
 if ((cloud_init)); then
   echo "INFO: Running with cloud-init, served on port ${cloud_init_port}"
@@ -79,6 +88,20 @@ if ((uefi)); then
   echo "INFO: Booting with UEFI"
   args+=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd")
 fi
+
+# Networking options
+declare -a net=(
+  -nic "user,hostfwd=tcp::${ssh_port}-10.42.0.10:22"
+)
+
+# Assumes an independently managed tap0 device
+net_tap=0
+if ((net_tap)); then
+  net=(
+    -nic "tap,script=no,downscript=no,ifname=tap0"
+  )
+fi
+args+=("${net[@]}")
 
 # Headless mode (-d option), as opposed to graphical QEMU display
 # I experiment with the different variants below.
@@ -107,7 +130,6 @@ telnet_multiplex=(
 
 # Starts completely in the background,
 # with Qemu console and serial port multiplexed on a TCP port.
-# Really neat! This is it until I involve systemd.
 daemon=(
   -daemonize
   -pidfile "${drive%.qcow2}".pid
@@ -115,7 +137,7 @@ daemon=(
 )
 
 declare -n variant
-variant=daemon
+variant=telnet_distinct
 if ((detach)); then
   args+=(
     "${variant[@]}"

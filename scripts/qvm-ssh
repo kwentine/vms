@@ -6,4 +6,4 @@ user="guest"
 instance="${1:-0}"
 
 export TERM=xterm-256color
-ssh -q -i "${ssh_private_key}" -F "${ssh_config}" "${user}"@127.0.0.1 -p 220"${instance}"
+ssh -v -i "${ssh_private_key}" -F "${ssh_config}" "${user}"@127.0.0.1 -p 220"${instance}"
