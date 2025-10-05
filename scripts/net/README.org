@@ -1,76 +1,47 @@
 #+TITLE: Network-related helpers.
 
-End goal: connect guets =cp=, =wk-1= and =wk-2= to a bridge on the host.
+End goal:
+- connect guests =cp=, =wk-1= and =wk-2= to a bridge on the host
+- allow internet access to guests by routing and masquerading packets
+  through the host interface.
 
-- Bridge IP :: 10.42.0.1/24
+Bridge:
+- Name :: =qvm0=
+- Subnet :: 10.42.0.1/24
+- TAP ports :: =qvm0t0= =qvm0t1= =qvm0t2=
 
-| Guest |         IP |
-|-------+------------|
-| cp    | 10.42.0.10 |
-| wk-1  | 10.42.0.11 |
-| wk-2  | 10.42.0.12 |
+IP addresses:
+| Guest |         IP | TAP    |
+|-------+------------+--------|
+| cp    | 10.42.0.10 | qvm0t0 |
+| wk-1  | 10.42.0.11 | qvm0t1 |
+| wk-2  | 10.42.0.12 | qvm0t2 |
 
 
 Step-by-step approach:
-  1. Single VM with TAP device.
+  1. [X] Single VM with TAP device.
      - [X] Webserver on =cp= reacheable from host
      - [X] SSH on =cp= reachable from host
      - [X] Internet reachable from =cp=
-  2. Two VMs on the same bridge.
-     - [ ] =cp= webserver reachable from =wk-1= and host
+  2. [X] Two VMs on the same bridge.
+     - [X] =cp= webserver reachable from =wk-1= and host
   3. Three VMS on bridge, that can reach the outside internet.
 
 Since I run unprivileged =qemu= in a toolbox, I chose to manage the host virtual interfaces independently of qemu invocations.
 
 * VM reachable from a host tap interface
 
-** Host interface
-See:
+For the host setup:
+- =setup-host.sh= (firewall rules)
+  - allow packet forwarding from the =qvm0= interface to the outside world
+  - masquerade (ie NAT, with the public-facing address not known beforehand)
 - =tap-up.sh=
 - =tap-down.sh=
 
-** Guest interface
-
-#+begin_example
-nmcli connection modify ens3 \
-  ipv4.method manual \
-  ipv4.gateway 10.42.0.1 \
-  ipv4.addresses 10.42.0.10/24 \
-  ipv4.dns 1.1.1.1
-#+end_example
-
-
-** Firewall
-
-Disabled altogether on the guest for now.
-
-Necessary on the host for:
-- allowing packets to be routed to the outside world from the 10.42.0.1/24 net
-- applying NAT
-
-#+begin_example
-sudo firewall-cmd --new-policy qvm-nat --permanent
-sudo firewall-cmd --reload
-sudo firewall-cmd --policy qvm-nat --add-ingress-zone internal
-sudo firewall-cmd --policy qvm-nat --add-egress-zone public
-
-# Allow all traffic to be forwarded
-firewall-cmd --permanent --policy qvm-nat --set-target ACCEPT
-
-# Or be selective
-firewall-cmd --policy qvm-nat --add-service http
-firewall-cmd --policy qvm-nat --add-service https
-firewall-cmd --policy qvm-nat --add-service dns
-
-# Enable NAT
-# Masquerade = SNAT with target translation address not known beforehand
-sudo firewall-cmd --zone=public --add-masquerade
-
-# Add relevant interface to internal zone
-firewall-cmd --zone=internal --add-interface=tap0
-#+end_example
-
-See =host-setup.sh=
+For the guest:
+- Firewalld disabled altogether, to avoid interfering with k8s
+  - =sudo systemctl disable --now firewalld.service=
+- =setup-guest.sh=
 
 ** Sources
 I found the following online documentation sources useful:
@@ -83,3 +54,4 @@ I found the following online documentation sources useful:
   - [[https://wiki.qemu.org/Documentation/Networking][Set up networking]]
 - [[https://firewalld.org/][Firewalld]]
 - [[https://networkmanager.dev/docs/][NetworkManager]]
+- [[https://wiki.nftables.org/wiki-nftables/index.php/Main_Page][nftables Wiki]]
