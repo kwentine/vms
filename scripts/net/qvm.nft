@@ -1,0 +1,21 @@
+add table inet qvm
+flush table inet qvm
+
+table inet qvm {
+
+    set masq_interfaces {
+	type ifname
+	elements = { "qvm0" }
+    }
+
+    chain FORWARD {
+        type filter hook forward priority 0; policy accept;
+        counter packets 0 bytes 0
+    }
+
+    chain POSTROUTING {
+        type nat hook postrouting priority srcnat + 20
+        policy accept
+	iifname @masq_interfaces oifname != @masq_interfaces masquerade
+    }
+}
