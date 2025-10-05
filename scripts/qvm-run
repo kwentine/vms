@@ -95,10 +95,14 @@ declare -a net=(
 )
 
 # Assumes an independently managed tap0 device
-net_tap=0
+net_tap=1
 if ((net_tap)); then
+  ifname=qvmtap0
+  printf -v macaddr "52:54:%02x:%02x:%02x:%02x" \
+         $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff)) \
+         $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff))
   net=(
-    -nic "tap,script=no,downscript=no,ifname=tap0"
+    -nic "tap,script=no,downscript=no,ifname=${ifname},mac=${macaddr}"
   )
 fi
 args+=("${net[@]}")
