@@ -3,26 +3,22 @@ set -eu
 
 help_msg="
 Run a VM from a disk in QVM_DIR/machines.
-Foward host SSH_PORT (defaut: 2200) to port 22 on the guest.
-Optionally enable cloud-init served over HTTP,
-assuming a server is listening on host CI_PORT (default: 8000).
+Optionally enable cloud-init served over HTTP at CLOUD_INIT_ADDR.
 
-Usage: $(basename "$0") [-n] [-e] [-i CI_PORT] [-p SSH_PORT] [-d] DISK_NAME[.qcow2]
+Usage: $(basename "$0") [-n] [-d] [-i CLOUD_INIT_ADDR] VM_NAME[.qcow2]
 "
 
-declare -r MACHINES_DIR="${QVM_DIR:-$(pwd)}/machines"
+: "${QVM_DIR:-$(pwd)}"
+declare -r QVM_DIR
+declare -r MACHINES_DIR="${QVM_DIR}/machines"
+declare -r RUNTIME_DIR="${QVM_DIR}/run"
 
-declare dry_run cloud_init \
-        uefi ssh_port \
-        cloud_init_port detach
+declare dry_run cloud_init_addr detach
 
 dry_run=0
 detach=0
-cloud_init=0
-uefi=1
-ssh_port=2200
 
-while getopts ehnup:i:d opt; do
+while getopts hn:i:d opt; do
   case "${opt}" in
     n)
       dry_run=1 ;;
@@ -30,12 +26,7 @@ while getopts ehnup:i:d opt; do
       echo "${help_msg}"
       exit ;;
     i)
-      cloud_init=1
-      cloud_init_port="${OPTARG}" ;;
-    e)
-      uefi=1 ;;
-    p)
-      ssh_port="${OPTARG}" ;;
+      cloud_init_addr="${OPTARG}" ;;
     d)
       detach=1 ;;
     *)
@@ -44,27 +35,22 @@ while getopts ehnup:i:d opt; do
 done
 shift $((OPTIND - 1))
 
-declare drive="${1:-}"
+declare vm="${1:-}"
 
-if [[ -z "${drive}" ]]; then
-  echo "ERROR: required argument: DISK_NAME"
+if [[ -z "${vm}" ]]; then
+  echo "ERROR: required argument: VM_NAME"
   exit 1
 fi
 
-drive="${drive%.qcow2}.qcow2"
-if ! [[ -f "${MACHINES_DIR}/${drive}" ]]; then
-  echo "ERROR: ${drive} not found in ${MACHINES_DIR}"
+drive="${MACHINES_DIR}/${vm}.qcow2"
+if ! [[ -f "${drive}" ]]; then
+  echo "ERROR: ${drive} not found."
   exit
 fi
 
 declare -a cmd args
 if ((dry_run)); then
   cmd=(echo)
-fi
-
-rootless=1
-if ! ((rootless)); then
-  cmd+=(sudo)
 fi
 
 cmd+=(qemu-system-x86_64)
@@ -74,38 +60,43 @@ declare -a args=(
   -cpu host
   -smp 4
   -m 8G
-  -drive "file=${MACHINES_DIR}/${drive},if=virtio"
+  -drive "file=${drive},if=virtio"
+  -drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd"
 )
 
 # Boot options
-
-if ((cloud_init)); then
-  echo "INFO: Running with cloud-init, served on port ${cloud_init_port}"
-  args+=(-smbios "type=1,serial=ds=nocloud;s=http://10.0.2.2:${cloud_init_port}")
+if [[ -n "${cloud_init_addr:-}" ]]; then
+  echo "INFO: Running with cloud-init served at http://${cloud_init_addr}"
+  args+=(-smbios "type=1,serial=ds=nocloud;s=http://${cloud_init_addr}")
 fi
 
-if ((uefi)); then
-  echo "INFO: Booting with UEFI"
-  args+=(-drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd")
-fi
+# Networking
+# Assumes an independently managed qvm0 bridge,
+# with TAP ports qvm0tap{1,2,3}
 
-# Networking options
-declare -a net=(
-  -nic "user,hostfwd=tcp::${ssh_port}-10.42.0.10:22"
+declare -A macs ifs
+
+macs=(
+  cp "52:54:3b:7b:ca:11"
+  wk-1 "52:54:50:67:15:55"
+  wk-2 "52:54:0b:a0:c2:15"
 )
 
-# Assumes an independently managed tap0 device
-net_tap=1
-if ((net_tap)); then
-  ifname=qvmtap0
+ifs=(
+  cp qvm0tap0
+  wk-1 qvm0tap1
+  wk-2 qvm0tap2
+)
+
+ifname="${ifs[${vm}]}"
+macaddr="${macs[${vm}]:-}"
+if [[ -z "${macaddr:-}" ]]; then
   printf -v macaddr "52:54:%02x:%02x:%02x:%02x" \
          $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff)) \
          $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff))
-  net=(
-    -nic "tap,script=no,downscript=no,ifname=${ifname},mac=${macaddr}"
-  )
 fi
-args+=("${net[@]}")
+
+args+=(-nic "tap,script=no,downscript=no,ifname=${ifname:-qvm0tap0},mac=${macaddr}")
 
 # Headless mode (-d option), as opposed to graphical QEMU display
 # I experiment with the different variants below.
@@ -136,7 +127,7 @@ telnet_multiplex=(
 # with Qemu console and serial port multiplexed on a TCP port.
 daemon=(
   -daemonize
-  -pidfile "${drive%.qcow2}".pid
+  -pidfile "${RUNTIME_DIR}/${vm}".pid
   "${telnet_multiplex[@]}"
 )
 
