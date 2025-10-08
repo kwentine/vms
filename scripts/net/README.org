@@ -1,49 +1,71 @@
 #+TITLE: Network-related helpers.
 
-End goal:
-- connect guests =cp=, =wk-1= and =wk-2= to a bridge on the host
-- allow internet access to guests by routing and masquerading packets
+Objectives:
+- Connect guests =cp=, =wk-1= and =wk-2= to a bridge on a host bridge =qvm0=
+- Allow internet access to guests by routing and masquerading packets
   through the host interface.
+- Generate and install certificates for HTTPS communication between host and guests.
+- Run various experimental host services (cloud-init, DHCP...) on a veth interface plugged into the bridge.
+
 
 Bridge:
 - Name :: =qvm0=
 - Subnet :: 10.42.0.1/24
-- TAP ports :: =qvm0t0= =qvm0t1= =qvm0t2=
 
-IP addresses:
-| Guest |         IP | TAP    |
-|-------+------------+--------|
-| cp    | 10.42.0.10 | qvm0t0 |
-| wk-1  | 10.42.0.11 | qvm0t1 |
-| wk-2  | 10.42.0.12 | qvm0t2 |
+Guest IP addresses:
+| Guest | Hostname      |         IP | TAP      |
+|-------+---------------+------------+----------|
+| cp    | cp.qvm0.lan   | 10.42.0.10 | qvm0tap0 |
+| wk-1  | wk-1.qvm0.lan | 10.42.0.11 | qvm0tap1 |
+| wk-2  | wk-2.qvm0.lan | 10.42.0.12 | qvm0tap2 |
 
+Host services:
+| Service    |        IP | Port | Interface |
+|------------+-----------+------+-----------|
+| Gateway    | 10.42.0.1 |      | qvm0      |
+|------------+-----------+------+-----------|
+| DHCP       | 10.42.0.2 |      | veth0     |
+| DNS        |           | 5300 |           |
+| NFS        |           |      |           |
+| cloud-init |           |      |           |
 
-Step-by-step approach:
-  1. [X] Single VM with TAP device.
-     - [X] Webserver on =cp= reacheable from host
-     - [X] SSH on =cp= reachable from host
-     - [X] Internet reachable from =cp=
-  2. [X] Two VMs on the same bridge.
-     - [X] =cp= webserver reachable from =wk-1= and host
-  3. Three VMS on bridge, that can reach the outside internet.
+Since I run unprivileged =qemu= in a toolbox,
+I manage the host virtual interfaces independently of qemu invocations,
+using helper scripts requiring sudo (see below).
 
-Since I run unprivileged =qemu= in a toolbox, I chose to manage the host virtual interfaces independently of qemu invocations.
-
-* VM reachable from a host tap interface
+* Bridge, routing and firewall
 
 For the host setup:
 - =setup-host.sh= (firewall rules)
   - allow packet forwarding from the =qvm0= interface to the outside world
   - masquerade (ie NAT, with the public-facing address not known beforehand)
-- =tap-up.sh=
-- =tap-down.sh=
+- =bridge-up.sh=
+  - Creates the =qvm0= bridge and TAP ports.
+- =tap-up.sh= and =tap-down.sh=
+  - Independently create TAP devices, mainly used for early experiments
 
 For the guest:
 - Firewalld disabled altogether, to avoid interfering with k8s
   - =sudo systemctl disable --now firewalld.service=
-- =setup-guest.sh=
+- Manual interface configuration using =nmcli=, for now
+  - See =setup-guest.sh=
 
-** Sources
+* Certificates
+
+- Generate a CA certificate =qvm-ca.pem= used to sign server certificates for each VM.
+  - Store certificate and private key in QVM_DIR/certs/ca
+  - Generate VM server certificates in QVM_DIR/certs/hosts
+  - Install certificates at =/root/cert= in each VM
+    - Ponder about how to automate this step, perhaps with =cloud-init=
+
+The following should work:
+#+begin_src sh
+  curl --cacert="${QVM_DIR}/ca-cert/qvm-ca.pem" https://cp.qvm0.lan
+  export SSL_CERT_DIR="${QVM_DIR}"/ca-cert
+  curl https://cp.qvm0.lan
+#+end_src
+
+* Sources
 I found the following online documentation sources useful:
 
 - Arch wiki
