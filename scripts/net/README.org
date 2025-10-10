@@ -1,12 +1,12 @@
 #+TITLE: Network-related helpers.
 
-Objectives:
+* Objective
+
 - Connect guests =cp=, =wk-1= and =wk-2= to a bridge on a host bridge =qvm0=
 - Allow internet access to guests by routing and masquerading packets
   through the host interface.
 - Generate and install certificates for HTTPS communication between host and guests.
 - Run various experimental host services (cloud-init, DHCP...) on a veth interface plugged into the bridge.
-
 
 Bridge:
 - Name :: =qvm0=
@@ -33,6 +33,7 @@ Since I run unprivileged =qemu= in a toolbox,
 I manage the host virtual interfaces independently of qemu invocations,
 using helper scripts requiring sudo (see below).
 
+
 * Bridge, routing and firewall
 
 For the host setup:
@@ -50,6 +51,19 @@ For the guest:
 - Manual interface configuration using =nmcli=, for now
   - See =setup-guest.sh=
 
+
+* Local services
+
+By plugging the peer end of =veth0= into =qvm0=,
+and harboring =veth0= in a dedicated network namespace =qvm-svc=,
+I can have containerized services in listen on dedicated ports of the =veth0= address.
+
+Some use cases that come to mind:
+- =cloud-init=
+- DNS server for link-local hostnames
+- DHCP server
+
+
 * Certificates
 
 - Generate a CA certificate =qvm-ca.pem= used to sign server certificates for each VM.
@@ -64,6 +78,48 @@ The following should work:
   export SSL_CERT_DIR="${QVM_DIR}"/ca-cert
   curl https://cp.qvm0.lan
 #+end_src
+
+
+** Create a keypair for the =qvm= certificate authority
+#+begin_src sh :tangle gen-ca-keypair.sh
+  args=(
+    -out "${QVM_DIR}/certs/ca/priv.pem"
+    -outpubkey "${QVM_DIR}/certs/ca/pub.pem"
+    -outform PEM
+    -algorithm RSA
+    -pkeyopt rsa_keygen_bits:2048
+  )
+  openssl genpkey "${args[@]}"
+#+end_src
+
+To peruse the generated keys:
+#+begin_src sh
+  openssl pkey -in "${QVM_DIR}/certs/ca/priv.pem" -text -noout
+  openssl pkey -in "${QVM_DIR}/certs/ca/pub.pem" -pubin -text -noout
+#+end_src
+
+Note that all the information is contained in the private key.
+
+** Create a self-signed CA certificate
+#+begin_src sh :tangle gen-ca-cert.sh
+  args=(
+    -x509
+    -key "${QVM_DIR}/certs/ca/priv.pem"
+    -subj "/CN=QVM"
+    -days 365
+    -out "${QVM_DIR}/certs/ca/cert.pem"
+  )
+  openssl req "${args[@]}"
+#+end_src
+
+To examine the generated certificate:
+#+begin_src sh
+  openssl x509 -in "${QVM_DIR}"/certs/ca/cert.pem -text -noout
+#+end_src
+
+
+** Create a certificate request for =cp=
+
 
 * Sources
 I found the following online documentation sources useful:
