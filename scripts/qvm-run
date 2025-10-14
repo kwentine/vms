@@ -18,7 +18,7 @@ declare dry_run cloud_init_addr detach
 dry_run=0
 detach=0
 
-while getopts hn:i:d opt; do
+while getopts hndi: opt; do
   case "${opt}" in
     n)
       dry_run=1 ;;
