@@ -37,6 +37,12 @@ using helper scripts requiring sudo (see below).
 * Bridge, routing and firewall
 
 For the host setup:
+
+#+begin_src sh
+  ./host-setup.sh
+  ./bridge-up.sh
+#+end_src
+
 - =setup-host.sh= (firewall rules)
   - allow packet forwarding from the =qvm0= interface to the outside world
   - masquerade (ie NAT, with the public-facing address not known beforehand)
@@ -45,11 +51,14 @@ For the host setup:
 - =tap-up.sh= and =tap-down.sh=
   - Independently create TAP devices, mainly used for early experiments
 
+
 For the guest:
 - Firewalld disabled altogether, to avoid interfering with k8s
   - =sudo systemctl disable --now firewalld.service=
 - Manual interface configuration using =nmcli=, for now
   - See =setup-guest.sh=
+
+
 
 
 * Local services
@@ -63,96 +72,6 @@ Some use cases that come to mind:
 - DNS server for link-local hostnames
 - DHCP server
 
-
-* Certificates
-
-- Generate a CA certificate =qvm-ca.pem= used to sign server certificates for each VM.
-  - Store certificate and private key in QVM_DIR/certs/ca
-  - Generate VM server certificates in QVM_DIR/certs/hosts
-  - Install certificates at =/root/cert= in each VM
-    - Ponder about how to automate this step, perhaps with =cloud-init=
-
-The following should work:
-#+begin_src sh
-  curl --cacert="${QVM_DIR}/ca-cert/qvm-ca.pem" https://cp.qvm0.lan
-  export SSL_CERT_DIR="${QVM_DIR}"/ca-cert
-  curl https://cp.qvm0.lan
-#+end_src
-
-
-** Create a keypair for the =qvm= certificate authority
-#+begin_src sh :tangle gen-ca-keypair.sh
-  args=(
-    -out "${QVM_DIR}/certs/ca/priv.pem"
-    -outpubkey "${QVM_DIR}/certs/ca/pub.pem"
-    -outform PEM
-    -algorithm RSA
-    -pkeyopt rsa_keygen_bits:2048
-  )
-  openssl genpkey "${args[@]}"
-#+end_src
-
-To peruse the generated keys:
-#+begin_src sh
-  openssl pkey -in "${QVM_DIR}/certs/ca/priv.pem" -text -noout
-  openssl pkey -in "${QVM_DIR}/certs/ca/pub.pem" -pubin -text -noout
-#+end_src
-
-Note that all the information is contained in the private key.
-
-** Create a self-signed CA certificate
-#+begin_src sh :tangle gen-ca-cert.sh
-  args=(
-    -x509
-    -key "${QVM_DIR}/certs/ca/priv.pem"
-    -subj "/CN=QVM"
-    -days 365
-    -out "${QVM_DIR}/certs/ca/cert.pem"
-  )
-  openssl req "${args[@]}"
-#+end_src
-
-To examine the generated certificate:
-#+begin_src sh
-  openssl x509 -in "${QVM_DIR}"/certs/ca/cert.pem -text -noout
-#+end_src
-
-
-** Create a certificate for =cp=
-We create a certificate for =cp.qvm0.lan= signed by our =QVM= certificate authority,
-in one step.
-Alternative would be to first create a certificate request,
-and then convert it to a x509 certificate.
-
-
-#+begin_src sh :tangle gen-host-cert.sh
-  args=(
-    -batch # Non-interactive mode
-    -x509  # Output a certificate directly, rather than a request
-    -out "${QVM_DIR}/certs/hosts/cp/cert.pem" # The generated certificate file
-    -newkey rsa:2048 # Generate the certified keypair
-    -keyout "${QVM_DIR}/certs/hosts/cp/priv.pem" # Generated private key
-    -noenc # Do not encrypt the private key
-    -subj "/CN=cp.qvm0.lan" # The identity bound by the certificate to the keypair
-    -addext "subjectAltName = DNS:cp.qvm0" # Some flexibility for the valid domain names
-    -addext "extendedKeyUsage=critical,serverAuth"
-    -addext "basicConstraints = critical, CA:false"
-    -days 365
-    # Our QVM certificate authority
-    -CA "${QVM_DIR}/certs/ca/cert.pem"
-    -CAkey "${QVM_DIR}/certs/ca/priv.pem"
-  )
-
-  openssl req "${args[@]}"
-#+end_src
-
-To examine the generated cert:
-
-#+begin_src sh
-  openssl x509 -in "${QVM_DIR}/certs/hosts/cp/cert.pem" -text -noout
-#+end_src
-
-To examine the c
 
 * Sources
 I found the following online documentation sources useful:
