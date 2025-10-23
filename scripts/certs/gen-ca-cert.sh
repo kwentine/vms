@@ -1,3 +1,4 @@
+#!/bin/bash
 args=(
   -x509
   -key "${QVM_DIR}/certs/ca/priv.pem"

@@ -1,3 +1,4 @@
+#!/bin/bash
 args=(
   -out "${QVM_DIR}/certs/ca/priv.pem"
   -outpubkey "${QVM_DIR}/certs/ca/pub.pem"

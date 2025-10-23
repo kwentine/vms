@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 guest="${1:-cp}"
 cert_dir=/root/cert
 # Ensure target directory exists

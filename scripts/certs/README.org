@@ -1,23 +1,25 @@
 #+TITLE: TLS certificates
 
 Objectives:
-- Generate a CA certificate =qvm-ca.pem= used to sign server certificates for each VM.
+- Generate a CA certificate used to sign server certificates for each VM.
   - Store certificate and private key in =QVM_DIR/certs/ca=
-- Generate VM server certificates in =QVM_DIR/certs/hosts=
-- Install certificates at =/root/cert= in each VM
-- Ponder about how to automate this step, perhaps with =cloud-init=
+- Generate VM server certificates and keys in =QVM_DIR/certs/hosts=
+- For each VM, install server certificates in =/root/cert=
+- Reflect on how to automate these steps, perhaps with =cloud-init=
 
 The following should work:
 #+begin_src sh
-  curl --cacert="${QVM_DIR}/ca-cert/qvm-ca.pem" https://cp.qvm0.lan
-  export SSL_CERT_DIR="${QVM_DIR}"/ca-cert
+  curl --cacert="${QVM_DIR}/certs/ca/cert.pem" https://cp.qvm0.lan
+  export SSL_CERT_DIR="${QVM_DIR}/certs/ca"
   curl https://cp.qvm0.lan
 #+end_src
 
+A later step would be to allow HTTPS traffic between VMs.
+But this would require hostname resolution to be setup beforehand.
 
 ** Create a keypair for the =qvm= certificate authority
-
-#+begin_src sh :tangle gen-ca-keypair.sh
+Generate a RSA keypair with a 2048-bit modulus.
+#+begin_src sh :tangle gen-ca-keypair.sh :shebang #!/bin/bash
   args=(
     -out "${QVM_DIR}/certs/ca/priv.pem"
     -outpubkey "${QVM_DIR}/certs/ca/pub.pem"
@@ -38,7 +40,7 @@ Note that all the information is contained in the private key.
 
 ** Create a self-signed CA certificate
 
-#+begin_src sh :tangle gen-ca-cert.sh
+#+begin_src sh :tangle gen-ca-cert.sh :shebang #!/bin/bash
   args=(
     -x509
     -key "${QVM_DIR}/certs/ca/priv.pem"
@@ -54,35 +56,37 @@ To examine the generated certificate:
   openssl x509 -in "${QVM_DIR}"/certs/ca/cert.pem -text -noout
 #+end_src
 
-** Create a certificate for =cp=
 
-We create a certificate for =cp.qvm0.lan= signed by our =QVM= certificate authority,
-in one step.
+** Create server certificates for VMs
 
-A more step-by-step alternative,
-reflecting the real certificate issuance process,
-would be to first create a certificate request,
+We create a certificate for ={cp,wk-1,wk-2}.qvm0.lan= signed by our =QVM= certificate authority.
+
+Note that a more "realistic" process would be to first create a certificate request,
 and then convert it to a x509 certificate (acting as a "micro-CA" in openssl parlance).
 
 
-#+begin_src sh :tangle gen-server-cert.sh
+#+begin_src sh :tangle gen-server-cert.sh :shebang #!/bin/bash
+  set -eu
+  hostname="${1}"
+  ca_dir="${QVM_DIR}/certs/ca"
+  cert_dir="${QVM_DIR}/certs/hosts/${hostname}"
+  mkdir -p "${cert_dir}"
   args=(
     -batch # Non-interactive mode
     -x509  # Output a certificate directly, rather than a request
-    -out "${QVM_DIR}/certs/hosts/cp/server.pem" # The generated certificate file
+    -out "${cert_dir}/server.pem" # The generated certificate file
     -newkey rsa:2048 # Generate the certified keypair
-    -keyout "${QVM_DIR}/certs/hosts/cp/priv.pem" # Generated private key
+    -keyout "${cert_dir}/priv.pem" # Generated private key
     -noenc # Do not encrypt the private key
-    -subj "/CN=cp.qvm0.lan" # The identity bound by the certificate to the keypair
-    -addext "subjectAltName = DNS:cp.qvm0, DNS:cp.qvm0.lan" # Some flexibility for the valid domain names
+    -subj "/CN=${hostname}.qvm0.lan" # The identity bound by the certificate to the keypair
+    -addext "subjectAltName = DNS:${hostname}.qvm0, DNS:${hostname}.qvm0.lan" # Some flexibility for the valid domain names
     -addext "extendedKeyUsage=critical,serverAuth"
     -addext "basicConstraints = critical, CA:false"
     -days 365
     # Our QVM certificate authority
-    -CA "${QVM_DIR}/certs/ca/cert.pem"
-    -CAkey "${QVM_DIR}/certs/ca/priv.pem"
+    -CA "${ca_dir}/cert.pem"
+    -CAkey "${ca_dir}/priv.pem"
   )
-
   openssl req "${args[@]}"
 #+end_src
 
@@ -98,7 +102,7 @@ To examine the generated cert:
 ** Testing the certificate
 - Copy the certificate to the =cp= VM
 
-#+begin_src sh :tangle install-server-cert.sh
+#+begin_src sh :tangle install-server-cert.sh :shebang #!/bin/bash
   #!/bin/bash
   guest="${1:-cp}"
   cert_dir=/root/cert
