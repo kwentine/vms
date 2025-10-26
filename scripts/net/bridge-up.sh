@@ -26,6 +26,24 @@ for (( n=0 ; n < nports; n++ )); do
 done
 unset port_name n nports
 
+# Additional veth pairs to plug into the bridge.
+# Only one for now, put into a separate namespace.
+
+create_netns=1
+netns_name=qvm
+if ((create_netns)) && ! ip netns list | grep "${netns_name}"; then
+  echo "INFO: Creating network namespace ${qvm}"
+  sudo ip netns add "${netns_name}"
+fi
+
+sudo ip link add veth0 type veth peer name veth0p
+sudo ip link set dev veth0 master "${br_name}"
+sudo ip link set veth0p netns qvm
+sudo ip -n qvm set veth0p name eth0
+sudo ip -n qvm addr add 10.42.0.2/24 dev eth0
+sudo ip -n qvm route add default via 10.42.0.1
+sudo ip -n qvm link set dev eth0 up
+
 teardown=0
 if ((teardown)) ; then
   sudo ip addr del dev "${br_name}" "${br_addr}"
