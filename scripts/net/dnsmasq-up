@@ -1,0 +1,53 @@
+#!/bin/env bash
+declare -A macs=(
+  cp "52:54:3b:7b:ca:11"
+  wk-1 "52:54:50:67:15:55"
+  wk-2 "52:54:0b:a0:c2:15"
+)
+
+declare -A ips=(
+  cp 10
+  wk-1 11
+  wk-2 12
+)
+
+opts=(
+  # Debugging
+  # --no-daemon
+  --log-queries
+  --log-dhcp
+  --dumpfile "${QVM_DIR:-/var/vms}/run/dnsmasq.pcap"
+  --pid-file="${QVM_DIR:-/var/vms}/run/dnsmasq.pid"
+  # Interface and domain
+  --interface=qvm0
+  --local-service=net
+  --bind-interfaces
+  --domain=qvm0.lan
+  # Ignore /etc/hosts
+  --no-hosts
+  # Specify upstreams directly, bypassing resolved.
+  # Forward only fqdns.
+  --no-resolv
+  --server 1.1.1.1 --server 8.8.8.8
+  --domain-needed
+  # A friendly TXT record, for fun.
+  --txt-record=gw.qvm0.lan,"Your gateway to the world."
+  # CNAME records
+  --cname=cp.qvm0,cp.qvm0.lan
+  --cname=wk-1.qvm0,wk-1.qvm0.lan
+  --cname=wk-2.qvm0,wk-2.qvm0.lan
+  # Derive an A record from an interface address
+  --interface-name=gw.qvm0.lan,qvm0/4
+  # extra-1.qvm0.lan maps to 10.42.0.101
+  --synth-domain=qvm0.lan,10.42.0.100,10.42.0.110,"extra-*"
+  # DHCP
+  --dhcp-authoritative
+  # Range for extra nodes
+  --dhcp-range=10.42.0.100,10.42.0.115
+  # Could also try something like:
+  # --dhcp-range=tag:services,10.42.0.2,10.42.0.9
+  --dhcp-host="${macs[cp]}",cp,10.42.0."${ips[cp]}"
+  --dhcp-host="${macs[wk-1]}",wk-1,10.42.0."${ips[wk-1]}"
+  --dhcp-host="${macs[wk-2]}",wk-2,10.42.0."${ips[wk-2]}"
+)
+sudo dnsmasq "${opts[@]}" "$@"
