@@ -61,16 +61,14 @@ For the guest:
 
 
 
-* Local services
+* DNS and DHCP
 
-By plugging the peer end of =veth0= into =qvm0=,
-and harboring =veth0= in a dedicated network namespace =qvm-svc=,
-I can have containerized services in listen on dedicated ports of the =veth0= address.
+=dnsmasq= runs on the =qvm0= interface, providing DNS and DHCP.
 
-Some use cases that come to mind:
-- =cloud-init=
-- DNS server for link-local hostnames
-- DHCP server
+To view =dnsmasq= logs:
+#+begin_src sh
+journalctl --boot --follow SYSLOG_IDENTIFIER=dnsmasq
+#+end_src
 
 
 * Sources
