@@ -5,7 +5,7 @@ help_msg="
 Run a VM from a disk in QVM_DIR/machines.
 Optionally enable cloud-init served over HTTP at CLOUD_INIT_ADDR.
 
-Usage: $(basename "$0") [-n] [-u] [-d] [-i CLOUD_INIT_ADDR] VM_NAME[.qcow2]
+Usage: $(basename "$0") [-n] [-u] [-d] [-i CLOUD_INIT_ADDR] VM_NAME
 "
 
 : "${QVM_DIR:-$(pwd)}"
@@ -58,6 +58,7 @@ fi
 cmd+=(qemu-system-x86_64)
 
 declare -a args=(
+  -name "${vm}"
   -accel kvm
   -cpu host
   -smp 4
@@ -76,30 +77,7 @@ fi
 if ((user_net)); then
   args+=(-nic "user,model=virtio,hostfwd=tcp::2200-:22")
 else
-  # Assumes an independently managed qvm0 bridge,
-  # with TAP ports qvm0tap{1,2,3}
-  declare -A macs ifs
-
-  macs=(
-    cp "52:54:3b:7b:ca:11"
-    wk-1 "52:54:50:67:15:55"
-    wk-2 "52:54:0b:a0:c2:15"
-  )
-
-  ifs=(
-    cp qvm0tap0
-    wk-1 qvm0tap1
-    wk-2 qvm0tap2
-  )
-
-  ifname="${ifs[${vm}]}"
-  macaddr="${macs[${vm}]:-}"
-  if [[ -z "${macaddr:-}" ]]; then
-    printf -v macaddr "52:54:%02x:%02x:%02x:%02x" \
-           $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff)) \
-           $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff))
-  fi
-  args+=(-nic "tap,script=no,downscript=no,ifname=${ifname:-qvm0tap0},mac=${macaddr},model=virtio")
+  args+=(-nic "bridge,br=qvm0,model=virtio")
 fi
 # Headless mode (-d option), as opposed to graphical QEMU display
 # I experiment with the different variants below.
