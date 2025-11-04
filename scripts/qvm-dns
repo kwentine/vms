@@ -8,7 +8,7 @@ source "${DIR}/libqvm.sh"
 
 #+ Options:
 #+ -h  Print this message
-#+ -d  Dry run: print the command that would be executed
+#+ -n  Dry run: print the command that would be executed
 dry_run=0
 #+ -t  Test: perform a syntax check on the configuration
 test=0

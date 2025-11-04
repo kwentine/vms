@@ -1,9 +1,10 @@
 #!/bin/bash
-#+ Bring up qvm0 Linux bridge, with preallocated TAP ports.
-#+ Assigned subnet: 10.42.0.1/24
+#+ Bring Linux bridge named qvm0, with assigned subnet 10.42.0.1/24
+#+ Optionally preallocate tap ports.
+#+
 #+ Adapted from: https://wiki.archlinux.org/title/QEMU/Advanced_networking
 #+
-#+ Usage: SCRIPT [-h] [-n] [N_PORTS]
+#+ Usage: SCRIPT [-h] [-n] [-t N_PORTS]
 set -eu
 SCRIPT="$(basename "$0")"
 DIR="$(dirname "$0")"
@@ -12,10 +13,14 @@ source "${DIR}/libqvm.sh"
 #+ Options:
 #+ -h  Print this message
 #+ -n  Print the commands that would be executed
-while getopts nh opt; do
+#+ -t N_PORTS  TAP ports to pre-allocate
+declare -i nports=0
+while getopts nht: opt; do
   case "${opt}" in
     n)
       dry_run=1 ;;
+    t)
+      nports="${OPTARG}" ;;
     *)
       usage "${opt}" ;;
   esac
@@ -30,9 +35,8 @@ if ! ip link show "${br_name}" &> /dev/null; then
   run sudo ip link set dev "${br_name}" up
 fi
 
-declare -i nports n
+declare -i n
 declare port_name
-nports="${1:-1}"
 for (( n=0 ; n < nports; n++ )); do
   printf -v port_name '%stap%d' "${br_name}" "${n}"
   if ! ip link show "${port_name}" &> /dev/null; then
@@ -42,7 +46,6 @@ for (( n=0 ; n < nports; n++ )); do
     run sudo ip link set dev "${port_name}" up
   fi
 done
-unset port_name n nports
 
 # Additional veth pairs to plug into the bridge,
 # and include into a separate namespace.
