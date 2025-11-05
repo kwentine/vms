@@ -70,6 +70,11 @@ To view =dnsmasq= logs:
 journalctl --boot --follow SYSLOG_IDENTIFIER=dnsmasq
 #+end_src
 
+The VMs communicate their hostname in DHCP queries,
+and =dnsmasq= takes care of maintaining corresponding DNS entries.
+
+So while the =cp= VM may not always get the same IP address,
+=cp.qvm0.lan= will always resolve accurately.
 
 * Sources
 I found the following online documentation sources useful:
