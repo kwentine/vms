@@ -8,7 +8,7 @@ source "${DIR}/libqvm.sh"
 
 #+ Options:
 #+ -h  Print this message
-#+ -n  Dry run: print the command that would be executed
+#+ -n  Dry run: print commands that would be executed
 dry_run=0
 #+ -t  Test: perform a syntax check on the configuration
 test=0
@@ -25,7 +25,6 @@ while getopts tndfhc: opt; do
     t)
       test=1 ;;
     n)
-      # shellcheck disable=SC2312
       dry_run=1 ;;
     d)
       debug=1 ;;
@@ -46,19 +45,17 @@ pcap_file="${QVM_DIR:-/var/vms}/run/dnsmasq.pcap"
 trap cleanup EXIT
 
 cleanup() {
-  ((fg | debug)) && rm -f "${pid_file}"
+  ((fg | debug)) || rm -f "${pid_file}"
 }
 
 down() {
   local pid
   if ! [[ -f "${pid_file}" ]]; then
-    echo "dnsmasq does not seem to be running"
-    return
+    errexit "dnsmasq does not seem to be running"
   fi
   pid="$(cat "${pid_file:-/dev/null}")"
   if ! run sudo kill "${pid}"; then
-    >&2 echo "ERROR: Unable to stop dnsmasq (${pid}). Stale pid ?"
-    exit 1
+    errexit "Unable to stop dnsmasq (${pid}). Stale pid ?"
   fi
 }
 
@@ -75,6 +72,9 @@ up() {
     args+=(
       --no-daemon
       --dumpfile="${pcap_file}"
+      # DHCP query/reply
+      # DNS query/reply
+      --dumpmask=$((0x1000|0x0002|0x0002))
     )
   elif ((fg)); then
     args+=("--keep-in-foreground")
