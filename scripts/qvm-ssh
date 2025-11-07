@@ -24,7 +24,7 @@ while getopts hu: opt; do
   esac
 done
 shift $((OPTIND - 1))
-host="${1:-cp.qvm0}"
+host="${1:-cp}.qvm0.lan"
 
 export TERM=xterm-256color
 ssh -F "${ssh_config}" "${user}@${host}"

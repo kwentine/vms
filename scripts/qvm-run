@@ -65,6 +65,8 @@ declare -a args=(
   -m 8G
   -drive "file=${drive},if=virtio"
   -drive "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd"
+  # TODO: Make this more flexible
+  -cdrom "${QVM_DIR}/iso/rhel-10.0-x86_64-dvd.iso"
 )
 
 # Boot options
@@ -95,44 +97,15 @@ if ((user_net)); then
 else
   args+=(-nic "bridge,br=qvm0,model=virtio,mac=$(macaddr)")
 fi
+
 # Headless mode (-d option), as opposed to graphical QEMU display
-# I experiment with the different variants below.
-
-# Monitor and VM serial port available on distinct plain TCP ports
-tcp_distinct=(
-  -display none
-  -monitor "tcp::2300,server=on"
-  -serial "tcp::2301,server=on"
-)
-
-# Monitor and VM serial port available on distinct telnet ports
-telnet_distinct=(
-  -display none
-  -monitor "telnet::2300,server=on"
-  -serial "telnet::2301,server=on"
-)
-
-# Monitor and VM serial port multiplexed on a telnet port
-# Do not wait for a connection to start the VM
-# This one is nice!
-telnet_multiplex=(
-  -display none
-  -serial "mon:telnet::2300,server=on,wait=off"
-)
-
-# Starts completely in the background,
-# with Qemu console and serial port multiplexed on a TCP port.
-daemon=(
-  -daemonize
-  -pidfile "${RUNTIME_DIR}/${vm}".pid
-  "${telnet_multiplex[@]}"
-)
-
-declare -n variant
-variant=telnet_distinct
 if ((detach)); then
   args+=(
-    "${variant[@]}"
+      -display none
+      -daemonize
+      -pidfile "${RUNTIME_DIR}/${vm}".pid
+      # -monitor "telnet::2300,server=on"
+      # -serial "telnet::2301,server=on"
   )
 fi
 
