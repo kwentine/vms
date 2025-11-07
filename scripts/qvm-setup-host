@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-if sudo nft -f "$(dirname $0)/qvm.nft"; then
+if sudo nft -f "$(dirname $0)/net/qvm.nft"; then
   sudo nft list table inet qvm
 fi
 
@@ -13,3 +13,4 @@ sudo resolvectl domain qvm0 "qvm0.lan"
 sudo resolvectl default-route qvm0 no
 sudo resolvectl llmnr qvm0 no
 sudo resolvectl dnssec qvm0 no
+resolvectl status qvm0
