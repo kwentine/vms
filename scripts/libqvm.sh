@@ -8,6 +8,6 @@ usage() {
 }
 
 run() {
-  ((dry_run)) && { echo "$@"; return; }
+  ((dry_run)) && { echo "$@" >&2; return; }
   "$@"
 }
