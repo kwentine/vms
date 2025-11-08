@@ -5,4 +5,5 @@ if [[ -f /run/.containerenv ]] && [[ -d /run/host ]]; then
   root_dir=/run/host
 fi
 export QVM_DIR="${root_dir:-}/${qvm_dir}"
-export PATH="$(realpath ${BASH_SOURCE[0]%/*}):${PATH}"
+PATH="$(pwd)/scripts:${PATH}"
+export PATH

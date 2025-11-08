@@ -1,8 +1,6 @@
-.qcow2
-.raw
-.iso
-.qcow2
-iso
-templates
+*.raw
+*.iso
+*.qcow2
 .env
 values.auto.pkrvars.hcl
+*.fd

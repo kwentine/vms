@@ -1,6 +1,7 @@
+#!/bin/env bash
 qvm_dir="${QVM_DIR:-$(pwd)}"
 output_dir="${qvm_dir}/machines"
-template_dir="../templates"
+template_dir="${QVM_DIR}/templates"
 
 help_msg="
 Create an overlay VM from a base disk image.
@@ -55,7 +56,7 @@ args=(
   -f qcow2
   -b "${template_dir}/${base}"
   -F qcow2
-  "${output_dir}/${overlay}"
+  "${output_dir}/${overlay}.qcow2"
   "${size}"
 )
 

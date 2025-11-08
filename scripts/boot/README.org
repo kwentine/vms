@@ -1,0 +1,25 @@
+#+TITLE: Experiments with firmware, booting and disks
+
+Access the UEFI menu (press ESC a few times)
+#+begin_example
+-boot menu=on,splash-time=5000
+#+end_example
+
+Command I experimented with:
+#+begin_src sh
+          qemu-system-x86_64 -accel kvm -smp 4 -m 8G \
+            -boot menu=on,splash-time=5000 \
+            -bios OVMF_CODE.fd \
+            -cdrom /var/vms/iso/rhel-10.0-x86_64-dvd.iso \
+            "${img}"
+#+end_src
+
+- I am not persisting UEFI variables
+- With img=rhel.qcow2
+  - firmware boots from DVD by default
+  - when disk boot option is selected once from the UEFI menu,
+    it is remembered, even though I do not provide =OVMF_VARS.fd=
+- With img=arch.qcow2
+  - firmware boots from disk by default
+
+A file in the ESP called =NvVars= may influence the boot order in the absence of NVRAM variables.

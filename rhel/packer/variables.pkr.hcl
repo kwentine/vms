@@ -34,33 +34,6 @@ variable "rhel_activation_key" {
   sensitive   = true
 }
 
-# User accounts
-variable "root_allow_login" {
-  type        = bool
-  description = "Enable root user console login"
-  default     = false
-}
-
-variable "root_password_crypted" {
-  type        = string
-  description = "Root password encrypted with e.g. 'openssl passwd'"
-}
-
-variable "user_name" {
-  type        = string
-  description = "User password encrypted with e.g. 'openssl passwd'"
-}
-
-variable "user_password_crypted" {
-  type        = string
-  description = "User password encrypted with e.g. 'openssl passwd'"
-}
-
-variable "user_ssh_public_key" {
-  type        = string
-  description = "User SSH public key, added to authorized_keys"
-}
-
 # Disk
 variable "disk_name" {
   type        = string
