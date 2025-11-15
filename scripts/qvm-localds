@@ -31,6 +31,7 @@ create_img() {
   cat <<EOF | sudo tee "${mnt_point}/meta-data" >/dev/null
 instance-id: qvm-${vm}
 hostname: ${vm}
+local-hostname: ${vm}
 EOF
 }
 
