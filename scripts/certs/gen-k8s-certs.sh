@@ -11,20 +11,20 @@ certs=(
 ca_dir="${QVM_DIR}/certs/ca"
 cert_dir="${QVM_DIR}/certs/k8s"
 mkdir -p "${cert_dir}"
+cp "${ca_dir}/cert.pem" "${cert_dir}/ca.crt"
+cp "${ca_dir}/priv.pem" "${cert_dir}/ca.key"
 
 for i in ${certs[*]}; do
-  args=(
-    -batch # Non-interactive mode
-    -x509  # Output a certificate directly, rather than a request.
-           # Implied by -CA, but kept for clarity.
-    -out "${cert_dir}/${i}.crt" # The generated certificate file
-    -newkey rsa:4096 # Generate the certified keypair
-    -keyout "${cert_dir}/${i}.key" # Generated private key
-    -noenc # Do not encrypt the private key
-    -config "certs.conf" -section "${i}"
-    # Our QVM certificate authority
-    -CA "${ca_dir}/cert.pem"
-    -CAkey "${ca_dir}/priv.pem"
-  )
-  openssl req "${args[@]}"
+  openssl genrsa -out "${cert_dir}/${i}.key" 4096
+
+  openssl req -new -key "${cert_dir}/${i}.key" -sha256 \
+    -config "certs.conf" -section ${i} \
+    -out "${cert_dir}/${i}.csr"
+
+  openssl x509 -req -days 3653 -in "${cert_dir}/${i}.csr" \
+    -copy_extensions copyall \
+    -sha256 -CA "${cert_dir}/ca.crt" \
+    -CAkey "${cert_dir}/ca.key" \
+    -CAcreateserial \
+    -out "${cert_dir}/${i}.crt"
 done
