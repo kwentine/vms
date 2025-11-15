@@ -44,19 +44,16 @@ pcap_file="${QVM_DIR:-/var/vms}/run/dnsmasq.pcap"
 
 trap cleanup EXIT
 
-cleanup() {
-  ((fg | debug)) || rm -f "${pid_file}"
-}
-
 down() {
   local pid
   if ! [[ -f "${pid_file}" ]]; then
     errexit "dnsmasq does not seem to be running"
   fi
-  pid="$(cat "${pid_file:-/dev/null}")"
+  pid="$(cat "${pid_file}")"
   if ! run sudo kill "${pid}"; then
     errexit "Unable to stop dnsmasq (${pid}). Stale pid ?"
   fi
+  rm -f "${pid_file}"
 }
 
 up() {
