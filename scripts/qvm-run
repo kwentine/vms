@@ -89,9 +89,10 @@ fi
 
 # Networking
 declare -A macs=(
-  cp "52:54:3b:7b:ca:11"
-  wk-1 "52:54:50:67:15:55"
-  wk-2 "52:54:0b:a0:c2:15"
+  cp  "52:54:3b:7b:ca:11"
+  wk1 "52:54:50:67:15:55"
+  wk2 "52:54:0b:a0:c2:15"
+  jmp "52:54:7f:16:47:38"
 )
 
 macaddr() {
@@ -100,6 +101,7 @@ macaddr() {
     printf -v macaddr "52:54:%02x:%02x:%02x:%02x" \
            $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff)) \
            $(( $RANDOM & 0xff)) $(( $RANDOM & 0xff))
+    echo "Assigned random MAC adddress: ${macaddr}" >&2
   fi
   echo "${macaddr}"
 }
