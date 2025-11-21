@@ -1,1 +1,58 @@
 #+TITLE: Equipment to work with QEMU VMs
+
+To bring up the appartus:
+
+- Setup the environment.
+  This defines the =QVM_DIR= directory where virtual machine disks are stored,
+  and adds the =scripts= directory to the =PATH= variable.
+
+#+begin_src sh :tangle setup.sh
+  source env.sh
+#+end_src
+
+- Create the =qvm0= bridge on the host, with address =10.42.01/42=
+  All virtual machines will plug into that bridge.
+#+begin_src sh :tangle setup.sh
+  qvm-bridge up
+#+end_src
+
+- Setup host firewall rules that make the internet reachable from the bridge.
+  Enable host DNS resolution, assigning the  =qvm0.lan= domain to the bridge.
+#+begin_src sh :tangle setup.sh
+  qvm-setup-host
+  qvm-dns up
+#+end_src
+
+- Start the virtual machines
+#+begin_src sh :tangle
+  for vm in cp wk1 wk2; do
+    qvm-run -d "${vm}"
+  done
+#+end_src
+
+- SSH to the VMs from the host (assuming key were provisioned on the guest by cloud-init)
+#+begin_src sh
+  ssh -i "${QVM_DIR}/ssh/id_ed25519" root@cp.qvm0.lan
+#+end_src
+
+** Creating virtual machines
+- Add =qcow2= images that should serve as VM templates in the =QVM_DIR/templates= directory.
+#+begin_src sh
+  cp ~/Downloads/rhel-10.0-x86_64-kvm.qcow2 "${QVM_DIR}/templates"
+#+end_src
+
+- Create a VM disk image named =node=, using a template as base image
+#+begin_src sh
+  qvm-create -b rhel-10.0-x86_64-kvm.qcow2 -s 20G node
+#+end_src
+
+- Optionally, create a =cloud-init= seed for the VM,
+  using a provided =user-data= (default: =scripts/user-data/cloud.yaml=)
+#+begin_src sh
+  qvm-localds -u /path/to/user-data.yaml node
+#+end_src
+
+- Run the VM with cloud-init seed mounted using the =-i= flag
+#+begin_src
+  qvm-run -i node
+#+end_src
