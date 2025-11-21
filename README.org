@@ -23,18 +23,27 @@ To bring up the appartus:
   qvm-dns up
 #+end_src
 
-- Start the virtual machines.
-  Assuming existing VM disks =${QVM_DIR}/machines/{cp,wk1,wk2}.qcow2=:
+- Start virtual machines.
+  Assuming existing disks =${QVM_DIR}/machines/{cp,wk1,wk2}.qcow2=:
 #+begin_src sh :tangle
   for vm in cp wk1 wk2; do
     qvm-run -d "${vm}"
   done
 #+end_src
 
-- SSH to the VMs from the host (assuming key were provisioned on the guest by cloud-init)
+- The VM serial port and QEMU monitor will be multiplexed on a pty mentioned in the output of =qvm-run=.
+  To get a console from the host:
+#+begin_src
+  foot --pty dev/pts/3
+#+end_src
+
+
+- Alternatively, SSH to the VMs from the host.
+  Aassuming the SSH public key was authorized on the guest by cloud-init:
 #+begin_src sh
   ssh -i "${QVM_DIR}/ssh/id_ed25519" root@cp.qvm0.lan
 #+end_src
+
 
 - To stop a VM
 #+begin_src sh
@@ -42,6 +51,7 @@ To bring up the appartus:
 #+end_src
 
 ** Creating virtual machines
+
 - Add =qcow2= images that should serve as VM templates in the =QVM_DIR/templates= directory.
 #+begin_src sh
   cp ~/Downloads/rhel-10.0-x86_64-kvm.qcow2 "${QVM_DIR}/templates"

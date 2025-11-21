@@ -119,6 +119,7 @@ if ((detach)); then
   args+=(
       -display none
       -daemonize
+      -serial mon:pty
       -pidfile "${RUNTIME_DIR}/${vm}".pid
   )
 fi
