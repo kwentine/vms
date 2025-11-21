@@ -112,12 +112,22 @@ else
 fi
 
 # Headless mode (-d option), as opposed to graphical QEMU display
+# A more succinct choice of option could have been:
+#   -display none -serial mon:pty
+# Here however, a fancy VirtIO serial port is enabled
 if ((detach)); then
+
   args+=(
-      -display none
-      -daemonize
-      -serial mon:pty
-      -pidfile "${RUNTIME_DIR}/${vm}".pid
+    -daemonize
+    -display none
+    -vga none
+    -serial none
+    # PCI bus to plug the vconsole into
+    -device virtio-serial-pci
+    -chardev "pty,mux=on,id=char0"
+    -mon "chardev=char0,mode=readline"
+    -device "virtconsole,chardev=char0"
+    -pidfile "${RUNTIME_DIR}/${vm}".pid
   )
 fi
 
