@@ -74,7 +74,7 @@ declare -a args=(
 # Boot options
 # Give us some time to choose boot device
 if ((first_boot)); then
-  args+=(-boot menu=on,splash-time=5000)
+  args+=(-boot "menu=on,splash-time=5000")
 fi
 
 if ((cloud_init)); then
