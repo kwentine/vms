@@ -42,8 +42,6 @@ action="${1:-up}"
 pid_file="${QVM_DIR:-/var/vms}/run/dnsmasq.pid"
 pcap_file="${QVM_DIR:-/var/vms}/run/dnsmasq.pcap"
 
-trap cleanup EXIT
-
 down() {
   local pid
   if ! [[ -f "${pid_file}" ]]; then
