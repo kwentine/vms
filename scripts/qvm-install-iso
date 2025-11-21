@@ -21,13 +21,17 @@ main() {
     case "${opt}" in
       h)
         echo "${help_msg}"
-        exit 0 ;;
+        exit 0
+        ;;
       s)
-        size="${OPTARG}" ;;
+        size="${OPTARG}"
+        ;;
       n)
-        dry_run=1 ;;
+        dry_run=1
+        ;;
       *)
-        exit 1 ;;
+        exit 1
+        ;;
     esac
   done
 
@@ -42,7 +46,7 @@ main() {
 
   if ! [[ -f "${disk}" ]]; then
     echo "INFO: Creating disk ${disk} of size ${size}..."
-    ! (( dry_run)) && truncate -s "${size}" "${disk}"
+    ! ((dry_run)) && truncate -s "${size}" "${disk}"
   fi
 
   declare -a cmd args

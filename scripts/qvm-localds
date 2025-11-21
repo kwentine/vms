@@ -2,11 +2,14 @@
 #+ Build cloud-init datasource for VM
 #+ Usage: SCRIPT [-h] [-u USER_DATA] VM
 set -eu
-SCRIPT="$(basename $0)"
-DIR="$(dirname $0)"
+SCRIPT="$(basename "$0")"
+DIR="$(dirname "$0")"
+# shellcheck source-path=SCRIPTDIR
 source "${DIR}/libqvm.sh"
 
-out_dir="${QVM_DIR}/localds"
+QVM_DIR="${QVM_DIR:-/var/vms}"
+DATASOURCE_DIR="${QVM_DIR}/localds"
+
 user_data="${DIR}/user-data/cloud.yaml"
 while getopts hu: opt; do
   case "${opt}" in
@@ -21,7 +24,11 @@ done
 shift $((OPTIND - 1))
 
 mnt_point="$(mktemp -d /tmp/qvm-localds-XXXX)"
-trap "sudo umount ${mnt_point} || true" EXIT
+on_exit() {
+  sudo umount "${mnt_point}" || true
+}
+
+trap on_exit EXIT
 
 create_img() {
   truncate --size 256K "${img}"
@@ -36,7 +43,7 @@ EOF
 }
 
 for vm in "$@"; do
-  img="${QVM_DIR}/localds/${vm}.img"
+  img="${DATASOURCE_DIR}/${vm}.img"
   create_img || errexit "Unable to create image: ${img}"
   info "Created datasource: ${img}"
 done

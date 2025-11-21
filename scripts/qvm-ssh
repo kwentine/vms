@@ -16,11 +16,14 @@ user=guest
 while getopts hu: opt; do
   case "${opt}" in
     u)
-      user="${OPTARG}" ;;
+      user="${OPTARG}"
+      ;;
     h)
-      usage ;;
+      usage
+      ;;
     \?)
-      usage 1 ;;
+      usage 1
+      ;;
   esac
 done
 shift $((OPTIND - 1))

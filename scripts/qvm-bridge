@@ -8,6 +8,8 @@
 set -eu
 SCRIPT="$(basename "$0")"
 DIR="$(dirname "$0")"
+
+# shellcheck source-path=SCRIPTDIR
 source "${DIR}/libqvm.sh"
 
 #+ Options:
@@ -18,18 +20,21 @@ declare -i nports=0
 while getopts nht: opt; do
   case "${opt}" in
     n)
-      dry_run=1 ;;
+      dry_run=1
+      ;;
     t)
-      nports="${OPTARG}" ;;
+      nports="${OPTARG}"
+      ;;
     *)
-      usage "${opt}" ;;
+      usage "${opt}"
+      ;;
   esac
 done
 shift $((OPTIND - 1))
 
 br_addr="10.42.0.1/24"
 br_name="qvm0"
-if ! ip link show "${br_name}" &> /dev/null; then
+if ! ip link show "${br_name}" &>/dev/null; then
   run sudo ip link add name "${br_name}" type bridge
   run sudo ip addr add "${br_addr}" dev "${br_name}"
   run sudo ip link set dev "${br_name}" up
@@ -37,9 +42,9 @@ fi
 
 declare -i n
 declare port_name
-for (( n=0 ; n < nports; n++ )); do
+for ((n = 0; n < nports; n++)); do
   printf -v port_name '%stap%d' "${br_name}" "${n}"
-  if ! ip link show "${port_name}" &> /dev/null; then
+  if ! ip link show "${port_name}" &>/dev/null; then
     echo "Created TAP device ${port_name}, plugged into bridge ${br_name}"
     run sudo ip tuntap add mode tap "${port_name}" user "${USER}"
     run sudo ip link set dev "${port_name}" master "${br_name}"
@@ -47,25 +52,8 @@ for (( n=0 ; n < nports; n++ )); do
   fi
 done
 
-# Additional veth pairs to plug into the bridge,
-# and include into a separate namespace.
-create_netns=0
-netns_name=qvm
-if ((create_netns)) && ! ip netns list | grep "${netns_name}"; then
-  echo "INFO: Creating network namespace ${qvm}"
-  run sudo ip netns add "${netns_name}"
-  run sudo ip link add veth0 type veth peer name veth0p
-  run sudo ip link set dev veth0 master "${br_name}"
-  run sudo ip link set veth0p netns qvm
-  run sudo ip -n qvm set veth0p name eth0
-  run sudo ip -n qvm addr add 10.42.0.2/24 dev eth0
-  run sudo ip -n qvm route add default via 10.42.0.1
-  run sudo ip -n qvm link set dev eth0 up
-fi
-
-
 teardown=0
-if ((teardown)) ; then
+if ((teardown)); then
   sudo ip addr del dev "${br_name}" "${br_addr}"
   sudo ip link set dev "${br_name}" down
   sudo ip link delete "${br_name}" type bridge
